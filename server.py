@@ -27,12 +27,40 @@ import socketserver
 # try: curl -v -X GET http://127.0.0.1:8080/
 
 
-class MyWebServer(socketserver.BaseRequestHandler):
-    
+class MyWebServer(socketserver.BaseRequestHandler):    
+
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+
+        header = self.getHeader(self.data)
+
+        response = ""
+
+        if(header[0] == "GET"):
+            response += "HTTP/1.1 200 OK Not FOUND!\r\n"
+        else:
+            response += self.methodNotAllowed()
+
+
+        self.request.sendall(bytearray(response,'utf-8'))
+    
+    def getHeader(self, raw_data):
+        data_list = raw_data.decode("utf-8").split("\r\n")
+
+        print("COMPONENTS", data_list)
+
+        # first element in data_list contains the HTTP header
+        # ex: GET /index.html HTTP/1.1
+
+        header = data_list[0].split()
+        return header
+    
+    def handleGetRequest(self):
+        pass
+
+    def methodNotAllowed(self):
+        return "HTTP/1.1 405 Method Not Allowed\r\n"
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
