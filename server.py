@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+import os
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -33,34 +34,79 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
 
-        header = self.getHeader(self.data)
+        startLine = self.getStartLine(self.data)
 
         response = ""
+        body = ""
 
-        if(header[0] == "GET"):
-            response += "HTTP/1.1 200 OK Not FOUND!\r\n"
-        else:
-            response += self.methodNotAllowed()
+        try:
+        # check HTTP method, startLine[0]
+            if(startLine[0] == "GET"):
+                (file_path, status, content_type) = self.handleGetRequest(startLine[1])
+                f = open(file_path, "r")
+                body = f.read()
 
+                response += "HTTP/1.1 %s OK Not FOUND!\r\n" % str(status)
+                response += content_type
+                response += "Content-Length: %s\r\n" % str(len(body))
 
+            else:
+                response += "HTTP/1.1 405 Method Not Allowed\r\n"
+        except:
+            response += "HTTP/1.1 404 Path Not Found\r\n"
+
+        response += "Connection: close\r\n"
+        response += body
         self.request.sendall(bytearray(response,'utf-8'))
     
-    def getHeader(self, raw_data):
+    # Return the HTTP request start line as a str[]
+    def getStartLine(self, raw_data):
         data_list = raw_data.decode("utf-8").split("\r\n")
 
         print("COMPONENTS", data_list)
 
-        # first element in data_list contains the HTTP header
+        # first element in data_list contains the HTTP request start line
         # ex: GET /index.html HTTP/1.1
 
-        header = data_list[0].split()
-        return header
-    
-    def handleGetRequest(self):
-        pass
+        startLine = data_list[0].split()
+        return startLine
 
-    def methodNotAllowed(self):
-        return "HTTP/1.1 405 Method Not Allowed\r\n"
+    # Return tuple: (file_path, status, content_type)
+    def handleGetRequest(self, target: str):
+        root_path = os.path.realpath("./www")
+
+        # let default status be 200 and default content type be text/html
+        file_path = ""
+        status = 200
+        content_type_base = "Content-Type: text/%s; charset=UTF-8\r\n"
+        content_type = content_type_base % "html"
+   
+        if ".css" in target:
+            # content type css
+            content_type = content_type_base % "css"
+            file_path += self.doesFileExist(root_path, target)
+        elif ".html" in target:
+            # content type html
+            file_path += self.doesFileExist(root_path, target)
+        elif target == "/":
+            # redirect to index.html
+            file_path += root_path + "/index.html"
+        elif target[-1] == "/":
+            # target is a path. Check if it exists.
+            file_path += self.doesFileExist(root_path + target, "index.html")
+        else:
+            # target is a path, but it needs to be redirected
+            status = 301
+            file_path += self.doesFileExist(root_path + target, "/index.html")
+        
+        return (file_path, status, content_type)
+    
+    def doesFileExist(self, path, file):
+        full_file_path = path + file
+        if(os.path.isfile(full_file_path)):
+            return full_file_path
+        else:
+            raise Exception("Invalid target: {target} does not exist")
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
