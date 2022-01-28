@@ -1,6 +1,7 @@
 #  coding: utf-8 
 import socketserver
 import os
+import time
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -37,7 +38,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
         startLine = self.getStartLine(self.data)
 
         response = ""
-        body = ""
+        content = ""
 
         try:
         # check HTTP method, startLine[0]
@@ -47,15 +48,18 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 body = f.read()
 
                 response += "HTTP/1.1 %s OK Not FOUND!\r\n" % str(status)
-                response += content_type
-                response += "Content-Length: %s\r\n" % str(len(body))
+                content += content_type
+                content += "Content-Length: %s\r\n" % str(len(bytes(body, "utf")))
+                content += body
+                f.close()
             else:
                 response += "HTTP/1.1 405 Method Not Allowed\r\n"
         except:
             response += "HTTP/1.1 404 Path Not Found\r\n"
-
+        
+        response += "Date: %s MST\r\n" % time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime())
         response += "Connection: close\r\n"
-        response += body
+        response += content + "\r\n"
         self.request.sendall(bytearray(response,'utf-8'))
     
     # Return the HTTP request start line as a str[]
