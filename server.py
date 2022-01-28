@@ -49,7 +49,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 response += "HTTP/1.1 %s OK Not FOUND!\r\n" % str(status)
                 response += content_type
                 response += "Content-Length: %s\r\n" % str(len(body))
-
             else:
                 response += "HTTP/1.1 405 Method Not Allowed\r\n"
         except:
@@ -63,11 +62,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def getStartLine(self, raw_data):
         data_list = raw_data.decode("utf-8").split("\r\n")
 
-        print("COMPONENTS", data_list)
-
         # first element in data_list contains the HTTP request start line
         # ex: GET /index.html HTTP/1.1
-
         startLine = data_list[0].split()
         return startLine
 
@@ -92,13 +88,13 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # redirect to index.html
             file_path += root_path + "/index.html"
         elif target[-1] == "/":
-            # target is a path. Check if it exists.
+            # target is a path
             file_path += self.doesFileExist(root_path + target, "index.html")
         else:
             # target is a path, but it needs to be redirected
             status = 301
             file_path += self.doesFileExist(root_path + target, "/index.html")
-        
+
         return (file_path, status, content_type)
     
     def doesFileExist(self, path, file):
@@ -107,7 +103,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             return full_file_path
         else:
             raise Exception("Invalid target: {target} does not exist")
-
+        
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
 
